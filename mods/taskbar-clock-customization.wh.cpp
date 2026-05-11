@@ -2,7 +2,7 @@
 // @id              taskbar-clock-customization
 // @name            Taskbar Clock Customization
 // @description     Custom date/time format, news feed, weather, performance metrics (upload/download speed, CPU, RAM, GPU, battery), media player info, custom fonts and colors, and more
-// @version         1.7.4
+// @version         1.7.5
 // @author          m417z
 // @github          https://github.com/m417z
 // @twitter         https://twitter.com/m417z
@@ -59,6 +59,7 @@ patterns can be used:
   * `%date_tz<n>%` - the date with a custom time zone. `<n>` is the time zone
     number in the list of time zones configured in the mod settings (not Windows
     settings).
+* `%datelocale%` - the [date locale](https://simplelocalize.io/data/locales/) as configured in settings.
 * `%weekday%` - the week day as configured in settings.
   * `%weekday_tz<n>%` - the week day with a custom time zone. `<n>` is the time
     zone number in the list of time zones configured in the mod settings (not
@@ -140,6 +141,13 @@ styles, such as the font color and size.
     syntax refer to the following page:
 
     https://docs.microsoft.com/en-us/windows/win32/intl/day--month--year--and-era-format-pictures
+- DateLocale: >-
+    ar-EG
+  $name: Date locale
+  $description: >-
+    Leave empty for the default locale. For the locale list refer to the following page:
+
+    https://simplelocalize.io/data/locales/
 - WeekdayFormat: dddd
   $name: Week day format
   $description: The format for the %weekday% pattern.
@@ -584,6 +592,7 @@ struct {
     bool showSeconds;
     StringSetting timeFormat;
     StringSetting dateFormat;
+    StringSetting dateLocale;
     StringSetting weekdayFormat;
     std::vector<std::wstring> weekdayFormatCustom;
     StringSetting topLine;
@@ -1644,14 +1653,14 @@ PCWSTR GetDateFormattedWithExtra(std::vector<std::wstring>** extra) {
             SplitTimeFormatString(g_settings.dateFormat.get());
 
         GetDateFormatEx_Original(
-            nullptr, DATE_AUTOLAYOUT, time,
+            g_settings.dateLocale.get(), DATE_AUTOLAYOUT, time,
             !dateFormatParts[0].empty() ? dateFormatParts[0].c_str() : nullptr,
             g_dateFormatted.buffer, ARRAYSIZE(g_dateFormatted.buffer), nullptr);
 
         g_dateFormattedExtra.resize(dateFormatParts.size() - 1);
         for (size_t i = 1; i < dateFormatParts.size(); i++) {
             WCHAR formatted[FORMATTED_BUFFER_SIZE];
-            GetDateFormatEx_Original(nullptr, DATE_AUTOLAYOUT, time,
+            GetDateFormatEx_Original(g_settings.dateLocale.get(), DATE_AUTOLAYOUT, time,
                                      !dateFormatParts[i].empty()
                                          ? dateFormatParts[i].c_str()
                                          : nullptr,
@@ -1703,7 +1712,9 @@ PCWSTR GetDateFormattedTz(size_t index) {
                 SplitTimeFormatString(g_settings.dateFormat.get());
 
             GetDateFormatEx_Original(
-                nullptr, DATE_AUTOLAYOUT, time,
+                g_settings.dateLocale.get(),
+                DATE_AUTOLAYOUT,
+                time,
                 !dateFormatParts[0].empty() ? dateFormatParts[0].c_str()
                                             : nullptr,
                 dateFormattedTz.buffer, ARRAYSIZE(dateFormattedTz.buffer),
@@ -1720,7 +1731,7 @@ PCWSTR GetDateFormattedTz(size_t index) {
 
 void FormatWeekday(const SYSTEMTIME* time, PWSTR buffer, size_t bufferSize) {
     if (g_settings.weekdayFormatCustom.empty()) {
-        GetDateFormatEx_Original(nullptr, DATE_AUTOLAYOUT, time,
+        GetDateFormatEx_Original(g_settings.dateLocale.get(), DATE_AUTOLAYOUT, time,
                                  *g_settings.weekdayFormat
                                      ? g_settings.weekdayFormat.get()
                                      : L"dddd",
@@ -4885,6 +4896,7 @@ void LoadSettings() {
     g_settings.showSeconds = Wh_GetIntSetting(L"ShowSeconds");
     g_settings.timeFormat = StringSetting::make(L"TimeFormat");
     g_settings.dateFormat = StringSetting::make(L"DateFormat");
+    g_settings.dateLocale = StringSetting::make(L"DateLocale");
     g_settings.weekdayFormat = StringSetting::make(L"WeekdayFormat");
 
     g_settings.weekdayFormatCustom.clear();
